@@ -28,14 +28,15 @@ struct {
  * @brief parses a packet to a struct representing the info needed to make a
  * decision in userspace firewall.
  *
- * it is assumed the packet is IPv4 and TCP protocol
+ * it is assumed the packet is IPv4
  *
  * @param data pointer to start of packet
  * @param data_end pointer to end of packet
  * @param pkt_core packet struct, to parse data into
  * @return [TODO:return]
  */
-int xdp_to_packet(void *data, void *data_end, struct packet_info *pkt_core) {
+int xdp_to_packet_ipv4(void *data, void *data_end, uint16 eth_proto,
+                       struct packet_info *pkt_core) {
   /* check bounds */
   if ((char *)data + sizeof(struct ethhdr) + sizeof(struct iphdr) >
       (char *)data_end)
@@ -49,7 +50,42 @@ int xdp_to_packet(void *data, void *data_end, struct packet_info *pkt_core) {
   pkt_core->ip_dst = iph->daddr;
   /* per the documentation the packet should already be IPV4 and TCP, so just
    * set these fields */
-  pkt_core->ip_p = IPPROTO_TCP;
+  pkt_core->ip_p = iph->protocol;
+  pkt_core->eth_p = ETH_P_IP;
+  pkt_core->port_src = tcp->source;
+  pkt_core->port_dst = tcp->dest;
+  pkt_core->direction = 16; /* TODO */
+
+  return 0;
+}
+
+/**
+ * @brief parses a packet to a struct representing the info needed to make a
+ * decision in userspace firewall.
+ *
+ * it is assumed the packet is IPv6
+ *
+ * @param data pointer to start of packet
+ * @param data_end pointer to end of packet
+ * @param pkt_core packet struct, to parse data into
+ * @return [TODO:return]
+ */
+int xdp_to_packet_ipv6(void *data, void *data_end,
+                       struct packet_info *pkt_core) {
+  /* check bounds */
+  if ((char *)data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr) >
+      (char *)data_end)
+    return -1;
+
+  struct iphdr *iph = (struct iphdr *)((char *)data + sizeof(struct ethhdr));
+
+  struct tcphdr *tcp = (struct tcphdr *)((char *)iph + sizeof(struct iphdr));
+
+  pkt_core->ip_src = iph->saddr;
+  pkt_core->ip_dst = iph->daddr;
+  /* per the documentation the packet should already be IPV4 and TCP, so just
+   * set these fields */
+  pkt_core->ip_p = iph->protocol;
   pkt_core->eth_p = ETH_P_IP;
   pkt_core->port_src = tcp->source;
   pkt_core->port_dst = tcp->dest;
@@ -105,7 +141,7 @@ int firewall_stateless(struct xdp_md *ctx) {
   else if (ip_proto != IPPROTO_TCP)
     return XDP_PASS;
 
-  xdp_to_packet(data, data_end, &pkt_core);
+  xdp_to_packet_ipv4(data, data_end, &pkt_core);
 
   if (query_usersp_drop_pkt(&pkt_core))
     return XDP_DROP;
