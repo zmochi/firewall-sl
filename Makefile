@@ -1,17 +1,28 @@
 CC = clang
-C_FILE = filter.c
-OBJ_FILE = filter.bpf.o
-KERN_PROGNAME = filter
-KERN_PROGPATH = /sys/fs/bpf/$(KERN_PROGNAME)
+
+USER_FILES = filter_user.c
+KERN_FILES = filter_kern.c
+KERN_OBJ_FILES := $(patsubst %.c,%.bpf.o,$(KERN_FILES))
+
 CFLAGS = --target=bpf -O2 -Wall -I/usr/include/$(shell uname -m)-linux-gnu -g
 
-all: $(C_FILE)
-	$(CC) $(CFLAGS) -c $(C_FILE) -o $(OBJ_FILE)
-	llvm-strip -g $(OBJ_FILE) # -g on compilation includes debug information but it also necessary for bpf_core_read (CO-RE). this strips unnecessary debug information from the object file
-	bpftool prog load $(OBJ_FILE) $(KERN_PROGPATH)
+all: kern
 
+user: filter_user.c
+	clang $< -lbpf -o filter
+
+kern: $(KERN_OBJ_FILES)
+
+%.bpf.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+	llvm-strip -g $@ # -g on compilation includes debug information but it also necessary for bpf_core_read (CO-RE). this strips unnecessary debug information from the object file
+	bpftool prog load $@ $(patsubst %.bpf.o,/sys/fs/bpf/%,$@)
+	bpftool gen skeleton $@ > $(patsubst %.bpf.o,%.skel.h,$@)
+
+vmlinux:
+	bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 
 clean:
-	rm $(KERN_PROGPATH)
+	rm -f *.bpf.o *.skel.h
 
 .PHONY: clean
