@@ -16,7 +16,6 @@ kern: $(KERN_OBJ_FILES)
 %.bpf.o: %.c vmlinux
 	$(CC) $(CFLAGS) -c $< -o $@
 	llvm-strip -g $@ # -g on compilation includes debug information but it also necessary for bpf_core_read (CO-RE). this strips unnecessary debug information from the object file
-	sudo bpftool prog load $@ $(patsubst %.bpf.o,/sys/fs/bpf/%,$@)
 	sudo bpftool gen skeleton $@ > $(patsubst %.bpf.o,%.skel.h,$@)
 
 vmlinux:
