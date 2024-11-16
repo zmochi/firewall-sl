@@ -2,15 +2,15 @@
 
 /* capacities of preprocess and postprocess queues */
 #define PREPROCESS_QUEUE_CAP 100
-#define POSTPROCESS_QUEUE_CAP 100
+#define PKT_DEC_ARR_CAP 100
 
 typedef unsigned char uint8;
 typedef short unsigned int uint16;
 typedef unsigned int uint32;
 
-static_assert(sizeof(uint8) == 1, "uint8 typedef has size != 8 bits");
-static_assert(sizeof(uint16) == 2, "uint16 typedef has size != 16 bits");
-static_assert(sizeof(uint32) == 4, "uint32 typedef has size != 32 bits");
+_Static_assert(sizeof(uint8) == 1, "uint8 typedef has size != 8 bits");
+_Static_assert(sizeof(uint16) == 2, "uint16 typedef has size != 16 bits");
+_Static_assert(sizeof(uint32) == 4, "uint32 typedef has size != 32 bits");
 
 typedef uint16 port;
 typedef uint16 eth_proto;
@@ -36,4 +36,15 @@ struct packet_info {
   ip_proto ip_p;
   eth_proto eth_p;
   direction direction;
+  int pkt_dec_map_index;
+};
+
+enum pkt_decision {
+  PKT_PASS,
+  PKT_DROP,
+  PKT_NODC,
+};
+
+struct pkt_dec {
+  enum pkt_decision dec;
 };
