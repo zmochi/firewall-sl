@@ -2,7 +2,11 @@
 
 /* capacities of preprocess and postprocess queues */
 #define PREPROCESS_QUEUE_CAP 100
-#define PKT_DEC_ARR_CAP 100
+#define PKT_DEC_HASH_CAP 100
+
+/* max number of times the eBPF program will poll for a userspace decision of a
+ * packet */
+#define MAX_POLL (1ULL << 32)
 
 typedef unsigned char uint8;
 typedef short unsigned int uint16;
@@ -43,8 +47,5 @@ enum pkt_decision {
   PKT_PASS,
   PKT_DROP,
   PKT_NODC,
-};
-
-struct pkt_dec {
-  enum pkt_decision dec;
+  PKT_ERR,
 };
